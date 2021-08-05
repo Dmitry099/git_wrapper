@@ -12,5 +12,5 @@ CLI Interface has two arguments:
 
 Example of using CLI Interface
 ```
-python git_wrapper.py -c https://github.com/Dmitry099/restaurant.git/ -b initial_branch~~~~
+python git_wrapper.py -c https://github.com/Dmitry099/restaurant.git/ -b initial_branch
 ```

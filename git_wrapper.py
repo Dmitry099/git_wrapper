@@ -56,7 +56,7 @@ def checkout_branch(branch_name: str, copy_directory: str):
     """
     os.chdir(copy_directory)
     error_string = (
-        "error: pathspec '%s' did not match any file(s) known to git\n" % (
+        "pathspec '%s' did not match any file(s) known to git" % (
             branch_name
         )
     )
@@ -67,7 +67,7 @@ def checkout_branch(branch_name: str, copy_directory: str):
     )
     output, error = process.communicate()
 
-    if error and error == bytes(error_string, 'utf-8'):
+    if error and bytes(error_string, 'utf-8') in error:
         process = subprocess.Popen(
             ['git', 'checkout', '-b', branch_name],
         )

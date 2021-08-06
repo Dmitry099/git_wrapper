@@ -1,25 +1,8 @@
 import argparse
 import os
-import re
 import shutil
 import subprocess
-
-GIT_URL_REGEXP = (
-    r'((git|ssh|http(s)?)|(git@[\w\.]+))(:(//)?)([\w\.@\:/\-~]+)(\.git)(/)?'
-)
-
-
-class IncorrectRepoLinkException(Exception):
-    """Exception raised when repository link is not correct."""
-    def __init__(self, link_name: str):
-        self.link_name = link_name
-
-    def __str__(self):
-        return (
-            'Link {} is not match with git url regular expression {}'.format(
-                self.link_name, GIT_URL_REGEXP
-            )
-        )
+import sys
 
 
 def clone_repo(repo_url: str) -> str:
@@ -28,9 +11,6 @@ def clone_repo(repo_url: str) -> str:
     :param repo_url: repository link
     :return: path to copy directory
     """
-
-    if re.match(GIT_URL_REGEXP, repo_url) is None:
-        raise IncorrectRepoLinkException(repo_url)
 
     url_to_find_repo_name = repo_url[:-1] if repo_url[-1] == '/' else repo_url
     repo_directory_name = os.path.splitext(os.path.basename(
@@ -43,8 +23,12 @@ def clone_repo(repo_url: str) -> str:
 
     if os.path.exists(copy_directory) and os.path.isdir(copy_directory):
         shutil.rmtree(copy_directory)
-    process = subprocess.Popen(['git', 'clone', repo_url, copy_directory])
-    process.wait()
+    process = subprocess.Popen(['git', 'clone', repo_url, copy_directory],
+                               stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    output, error = process.communicate()
+    if error and 'fatal: ' in error.decode('utf-8'):
+        print(error.decode('utf-8'))
+        sys.exit()
     return copy_directory
 
 
@@ -68,36 +52,33 @@ def checkout_branch(branch_name: str, copy_directory: str):
     output, error = process.communicate()
 
     if error and bytes(error_string, 'utf-8') in error:
-        process = subprocess.Popen(
+        subprocess.call(
             ['git', 'checkout', '-b', branch_name],
         )
-        process.wait()
-    else:
-        print('Output: {}\nError: {}\n'.format(output, error))
-
-
-parser = argparse.ArgumentParser(
-    description=('Command line interface to clone the repository and switch '
-                 'to the branch.')
-)
-
-parser.add_argument(
-    '-c',
-    type=str,
-    dest='repository',
-    required=True,
-    help='repository link'
-)
-parser.add_argument(
-    '-b',
-    type=str,
-    dest='branch',
-    required=True,
-    help='branch name'
-)
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(
+        description=(
+            'Command line interface to clone the repository and switch '
+            'to the branch.')
+    )
+
+    parser.add_argument(
+        '-c',
+        type=str,
+        dest='repository',
+        required=True,
+        help='repository link'
+    )
+    parser.add_argument(
+        '-b',
+        type=str,
+        dest='branch',
+        required=True,
+        help='branch name'
+    )
+
     args = parser.parse_args()
     copy_directory = clone_repo(args.repository)
     checkout_branch(args.branch, copy_directory)

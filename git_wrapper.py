@@ -22,8 +22,12 @@ class IncorrectRepoLinkException(Exception):
         )
 
 
-def clone_repo(repo_url: str):
-    """Clones the repo from repository link."""
+def clone_repo(repo_url: str) -> str:
+    """Clones the repo from repository link.
+
+    :param repo_url: repository link
+    :return: path to copy directory
+    """
 
     if re.match(GIT_URL_REGEXP, repo_url) is None:
         raise IncorrectRepoLinkException(repo_url)
@@ -35,21 +39,42 @@ def clone_repo(repo_url: str):
     # For task purpose the path to copied directory
     # is stable, but we can make it like argument for CLI
     # if it will be needed.
-    copy_directory = os.path.join(os.path.dirname(os.getcwd()),
-                                  repo_directory_name)
+    copy_directory = os.path.join(os.getcwd(), repo_directory_name)
 
     if os.path.exists(copy_directory) and os.path.isdir(copy_directory):
         shutil.rmtree(copy_directory)
     process = subprocess.Popen(['git', 'clone', repo_url, copy_directory])
     process.wait()
-    # change directory for future command to make a checkout
+    return copy_directory
+
+
+def checkout_branch(branch_name: str, copy_directory: str):
+    """Checkout to branch.
+
+    :param branch_name: name of the checkout branch
+    :param copy_directory: path to copy directory
+    """
     os.chdir(copy_directory)
+    error_string = (
+        "error: pathspec '%s' did not match any file(s) known to git\n" % (
+            branch_name
+        )
+    )
+    process = subprocess.Popen(
+        ['git', 'checkout', branch_name],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE
+    )
+    output, error = process.communicate()
 
+    if error and error == bytes(error_string, 'utf-8'):
+        process = subprocess.Popen(
+            ['git', 'checkout', '-b', branch_name],
+        )
+        process.wait()
+    else:
+        print('Output: {}\nError: {}\n'.format(output, error))
 
-def checkout_branch(branch_name: str):
-    """Checkout to branch."""
-    process = subprocess.Popen(['git', 'checkout', '-B', branch_name])
-    process.wait()
 
 parser = argparse.ArgumentParser(
     description=('Command line interface to clone the repository and switch '
@@ -71,6 +96,8 @@ parser.add_argument(
     help='branch name'
 )
 
-args = parser.parse_args()
-clone_repo(args.repository)
-checkout_branch(args.branch)
+
+if __name__ == "__main__":
+    args = parser.parse_args()
+    copy_directory = clone_repo(args.repository)
+    checkout_branch(args.branch, copy_directory)

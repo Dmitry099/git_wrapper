@@ -1,8 +1,33 @@
 import argparse
+import logging
 import os
 import shutil
 import subprocess
 import sys
+
+
+class GitLogger:
+    """Logger for git commands CLI."""
+
+    def __init__(self):
+        """Initialize."""
+        self.logger = logging.getLogger('__name__')
+        self.logger.setLevel(logging.INFO)
+        handler = logging.StreamHandler()
+        handler.setFormatter(
+            logging.Formatter(
+                '%(asctime)s: %(message)s',
+                datefmt='%Y-%m-%d %H:%M:%S'
+            )
+        )
+        self.logger.addHandler(handler)
+
+    def log(self, message: str):
+        """Log message.
+
+        :param message: message to log.
+        """
+        self.logger.info(message)
 
 
 def clone_repo(repo_url: str) -> str:
@@ -80,5 +105,14 @@ if __name__ == "__main__":
     )
 
     args = parser.parse_args()
+    git_logger = GitLogger()
     copy_directory = clone_repo(args.repository)
+    git_logger.log(
+        'Repository with name {} has been cloned to path {}!'.format(
+            args.repository, copy_directory
+        )
+    )
     checkout_branch(args.branch, copy_directory)
+    git_logger.log(
+        'Branch with name "{}" has been selected!'.format(args.branch)
+    )
